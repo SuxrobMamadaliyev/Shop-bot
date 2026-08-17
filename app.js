@@ -79,6 +79,27 @@ function renderProducts() {
   }
 }
 
+// ================== YORDAMCHI: XABAR KO'RSATISH ==================
+function showAlert(message) {
+  if (tg?.showAlert) {
+    tg.showAlert(message);
+  } else {
+    alert(message);
+  }
+}
+
+function showToast(message) {
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.add('show'));
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => toast.remove(), 250);
+  }, 2200);
+}
+
 // ================== SAVAT ==================
 window.addToCart = function (id) {
   const product = products.find(p => p._id === id);
@@ -86,13 +107,44 @@ window.addToCart = function (id) {
   if (!cart[id]) cart[id] = { product, qty: 0 };
   cart[id].qty += 1;
   updateCartBar();
+  if (!document.getElementById('cartModal').classList.contains('hidden')) renderCartModal();
+  tg.HapticFeedback?.impactOccurred('light');
+  showToast(`✅ ${product.name} savatga qo'shildi`);
+};
+
+window.increaseQty = function (id) {
+  if (!cart[id]) return;
+  cart[id].qty += 1;
+  updateCartBar();
+  renderCartModal();
   tg.HapticFeedback?.impactOccurred('light');
 };
 
-function updateCartBar() {
+window.decreaseQty = function (id) {
+  if (!cart[id]) return;
+  cart[id].qty -= 1;
+  if (cart[id].qty <= 0) delete cart[id];
+  updateCartBar();
+  renderCartModal();
+  tg.HapticFeedback?.impactOccurred('light');
+};
+
+window.removeFromCart = function (id) {
+  delete cart[id];
+  updateCartBar();
+  renderCartModal();
+  tg.HapticFeedback?.impactOccurred('medium');
+};
+
+function cartTotals() {
   const items = Object.values(cart);
   const count = items.reduce((s, i) => s + i.qty, 0);
   const total = items.reduce((s, i) => s + i.qty * i.product.price, 0);
+  return { count, total };
+}
+
+function updateCartBar() {
+  const { count, total } = cartTotals();
 
   const bar = document.getElementById('cartBar');
   bar.classList.toggle('hidden', count === 0);
@@ -105,13 +157,38 @@ function updateCartBar() {
 
 function renderCartModal() {
   const container = document.getElementById('cartItems');
-  const items = Object.values(cart);
-  container.innerHTML = items.map(i => `
+  const summary = document.getElementById('cartSummary');
+  const form = document.getElementById('checkoutForm');
+  const items = Object.entries(cart);
+
+  if (!items.length) {
+    container.innerHTML = '<p class="empty-state">Savat bo\'sh. Mahsulot qo\'shib ko\'ring 🛍</p>';
+    summary.classList.add('hidden');
+    form.classList.add('hidden');
+    return;
+  }
+
+  container.innerHTML = items.map(([id, i]) => `
     <div class="cart-item">
-      <span>${i.product.name} x${i.qty}</span>
-      <span>${(i.product.price * i.qty).toLocaleString()} so'm</span>
+      <img src="${productImage(i.product)}" alt="${i.product.name}" class="cart-item-img" />
+      <div class="cart-item-info">
+        <span class="cart-item-name">${i.product.name}</span>
+        <span class="cart-item-price">${(i.product.price * i.qty).toLocaleString()} so'm</span>
+      </div>
+      <div class="qty-stepper">
+        <button type="button" onclick="decreaseQty('${id}')" aria-label="Kamaytirish">−</button>
+        <span>${i.qty}</span>
+        <button type="button" onclick="increaseQty('${id}')" aria-label="Ko'paytirish">+</button>
+      </div>
+      <button type="button" class="remove-btn" onclick="removeFromCart('${id}')" aria-label="O'chirish">🗑</button>
     </div>
-  `).join('') || '<p>Savat bo\'sh</p>';
+  `).join('');
+
+  const { count, total } = cartTotals();
+  document.getElementById('summaryCount').textContent = `${count} ta`;
+  document.getElementById('summaryTotal').textContent = `${total.toLocaleString()} so'm`;
+  summary.classList.remove('hidden');
+  form.classList.remove('hidden');
 }
 
 document.getElementById('cartBtn').onclick = () => {
@@ -122,13 +199,41 @@ document.getElementById('closeCart').onclick = () => {
   document.getElementById('cartModal').classList.add('hidden');
 };
 
-document.getElementById('checkoutBtn').onclick = async () => {
+function setCheckoutLoading(loading) {
+  const btn = document.getElementById('checkoutBtn');
+  btn.disabled = loading;
+  btn.querySelector('.btn-label').classList.toggle('hidden', loading);
+  btn.querySelector('.btn-spinner').classList.toggle('hidden', !loading);
+}
+
+function isValidPhone(phone) {
+  const digits = phone.replace(/\D/g, '');
+  return digits.length >= 9;
+}
+
+document.getElementById('checkoutForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const { count } = cartTotals();
+  if (!count) {
+    showAlert('Savat bo\'sh. Avval mahsulot qo\'shing.');
+    return;
+  }
+
   const fullName = document.getElementById('fullName').value.trim();
   const phone = document.getElementById('phone').value.trim();
   const address = document.getElementById('address').value.trim();
 
-  if (!fullName || !phone || !address) {
-    tg.showAlert('Iltimos, barcha maydonlarni to\'ldiring');
+  if (!fullName || fullName.length < 3) {
+    showAlert('Iltimos, ism familiyangizni to\'liq kiriting');
+    return;
+  }
+  if (!phone || !isValidPhone(phone)) {
+    showAlert('Iltimos, to\'g\'ri telefon raqam kiriting');
+    return;
+  }
+  if (!address || address.length < 5) {
+    showAlert('Iltimos, yetkazib berish manzilini to\'liq kiriting');
     return;
   }
 
@@ -139,6 +244,7 @@ document.getElementById('checkoutBtn').onclick = async () => {
     qty: i.qty
   }));
 
+  setCheckoutLoading(true);
   try {
     const res = await fetch(`${API_URL}/api/orders`, {
       method: 'POST',
@@ -151,17 +257,52 @@ document.getElementById('checkoutBtn').onclick = async () => {
     });
     const data = await res.json();
 
-    if (data.paymentUrl) {
-      tg.sendData(JSON.stringify({ orderId: data.orderId }));
-      tg.openLink(data.paymentUrl);
-      cart = {};
-      updateCartBar();
-      document.getElementById('cartModal').classList.add('hidden');
+    if (!res.ok) {
+      showAlert(data.error || 'Buyurtmani yaratib bo\'lmadi, qaytadan urinib ko\'ring');
+      setCheckoutLoading(false);
+      return;
     }
+
+    document.getElementById('cartModal').classList.add('hidden');
+    showOrderSuccess(data);
+
+    cart = {};
+    updateCartBar();
+    document.getElementById('checkoutForm').reset();
   } catch (e) {
-    tg.showAlert('Xatolik yuz berdi, qaytadan urinib ko\'ring');
+    showAlert('Internet aloqasida xatolik, qaytadan urinib ko\'ring');
+  } finally {
+    setCheckoutLoading(false);
   }
-};
+});
+
+function showOrderSuccess(order) {
+  const overlay = document.createElement('div');
+  overlay.className = 'sub-gate';
+  overlay.innerHTML = `
+    <div class="sub-gate-card success-card">
+      <div class="success-icon">✅</div>
+      <h2>Buyurtma qabul qilindi!</h2>
+      <p>Buyurtma raqami: <b>#${(order.orderId || '').toString().slice(-6)}</b></p>
+      <p>Jami: <b>${(order.totalAmount || 0).toLocaleString()} so'm</b></p>
+      ${order.paymentUrl
+        ? `<button id="goPay">💳 To'lovni amalga oshirish</button>`
+        : `<p class="hint">To'lov havolasini olishda muammo bo'ldi — admin siz bilan bog'lanadi.</p>`}
+      <button id="goOrders" class="secondary-btn">📦 Buyurtmalarimni ko'rish</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  if (order.paymentUrl) {
+    document.getElementById('goPay').onclick = () => {
+      tg.openLink(order.paymentUrl);
+    };
+  }
+  document.getElementById('goOrders').onclick = () => {
+    overlay.remove();
+    switchPage('orders');
+  };
+}
 
 // ================== BUYURTMALARIM ==================
 const statusLabels = {

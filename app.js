@@ -53,16 +53,30 @@ async function loadProducts() {
   }
 }
 
+function productImage(p) {
+  if (p.image) return p.image;
+  if (p.fileId) return `${API_URL}/image/${p.fileId}`;
+  return 'https://placehold.co/200x150?text=Rasm';
+}
+
 function renderProducts() {
   const list = document.getElementById('productList');
+  const highlightId = new URLSearchParams(window.location.search).get('product');
   list.innerHTML = products.map(p => `
-    <div class="product-card">
-      <img src="${p.image || 'https://placehold.co/200x150?text=Rasm'}" alt="${p.name}" />
+    <div class="product-card${p._id === highlightId ? ' highlight' : ''}" id="product-${p._id}">
+      <img src="${productImage(p)}" alt="${p.name}" />
       <h3>${p.name}</h3>
       <div class="price">${p.price.toLocaleString()} so'm</div>
       <button onclick="addToCart('${p._id}')">Qo'shish</button>
     </div>
   `).join('');
+
+  if (highlightId) {
+    const el = document.getElementById(`product-${highlightId}`);
+    if (el) {
+      setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 200);
+    }
+  }
 }
 
 // ================== SAVAT ==================
@@ -188,15 +202,63 @@ async function loadOrders() {
 }
 
 // ================== PROFIL ==================
-function renderProfile() {
+async function renderProfile() {
   const container = document.getElementById('profileInfo');
   const initial = (user.first_name || 'U')[0].toUpperCase();
+  const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ') || 'Foydalanuvchi';
+
   container.innerHTML = `
-    <div class="avatar">${initial}</div>
-    <h3>${[user.first_name, user.last_name].filter(Boolean).join(' ') || 'Foydalanuvchi'}</h3>
+    <div class="avatar-wrap">
+      ${user.photo_url ? `<img class="avatar-img" src="${user.photo_url}" alt="${fullName}" />` : `<div class="avatar">${initial}</div>`}
+      ${user.is_premium ? '<span class="premium-badge" title="Telegram Premium">⭐</span>' : ''}
+    </div>
+    <h3>${fullName}</h3>
     <p>${user.username ? '@' + user.username : ''}</p>
-    <p>ID: ${user.id || '-'}</p>
+    <div class="profile-stats">
+      <div class="stat"><span class="stat-icon">🆔</span><span class="stat-label">ID</span><span class="stat-value">${user.id || '-'}</span></div>
+      <div class="stat"><span class="stat-icon">📦</span><span class="stat-label">Buyurtmalar</span><span class="stat-value" id="statOrders">…</span></div>
+      <div class="stat"><span class="stat-icon">💰</span><span class="stat-label">Jami xarid</span><span class="stat-value" id="statSpent">…</span></div>
+    </div>
   `;
+
+  if (!user.id) return;
+  try {
+    const res = await fetch(`${API_URL}/api/orders/user/${user.id}`);
+    const orders = await res.json();
+    document.getElementById('statOrders').textContent = orders.length;
+    const spent = orders.filter(o => ['paid', 'delivered'].includes(o.status)).reduce((s, o) => s + o.totalAmount, 0);
+    document.getElementById('statSpent').textContent = spent.toLocaleString() + " so'm";
+  } catch (e) {
+    // jim turadi — profil asosiy ma'lumotlari baribir ko'rinadi
+  }
 }
 
+// ================== MAJBURIY OBUNA TEKSHIRUVI (himoya qatlami) ==================
+async function checkSubscriptionGate() {
+  if (!user.id) return;
+  try {
+    const res = await fetch(`${API_URL}/api/check-subscription/${user.id}`);
+    const data = await res.json();
+    if (!data.subscribed && data.channels.length) {
+      const overlay = document.createElement('div');
+      overlay.className = 'sub-gate';
+      overlay.innerHTML = `
+        <div class="sub-gate-card">
+          <h2>📢 Obuna talab qilinadi</h2>
+          <p>Do'kondan foydalanish uchun quyidagi kanallarga obuna bo'ling:</p>
+          <div class="sub-gate-list">
+            ${data.channels.map(ch => `<a href="${ch.url}" target="_blank" class="sub-gate-link">📢 ${ch.title || ch.username}</a>`).join('')}
+          </div>
+          <button id="subGateCheck">✅ Tekshirish</button>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+      document.getElementById('subGateCheck').onclick = () => window.location.reload();
+    }
+  } catch (e) {
+    // API mavjud bo'lmasa jim o'tkazib yuboriladi — bot tomonidagi tekshiruv baribir ishlaydi
+  }
+}
+
+checkSubscriptionGate();
 loadProducts();

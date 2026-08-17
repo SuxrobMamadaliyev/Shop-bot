@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Do'kon</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="header">
+    <h1>🛍 Do'konimiz</h1>
+  </header>
+
+  <main id="productList" class="product-list"></main>
+
+  <div id="cartBar" class="cart-bar hidden">
+    <span id="cartInfo">0 ta mahsulot — 0 so'm</span>
+    <button id="cartBtn">Savat 🛒</button>
+  </div>
+
+  <div id="cartModal" class="modal hidden">
+    <div class="modal-content">
+      <h2>Savat</h2>
+      <div id="cartItems"></div>
+      <input id="fullName" placeholder="Ism familiya" />
+      <input id="phone" placeholder="Telefon raqam" />
+      <input id="address" placeholder="Manzil" />
+      <button id="checkoutBtn">To'lovga o'tish</button>
+      <button id="closeCart" class="secondary">Yopish</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

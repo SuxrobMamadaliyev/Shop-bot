@@ -57,6 +57,12 @@ app.get('/api/orders/:id', async (req, res) => {
   res.json(order);
 });
 
+// Foydalanuvchining barcha buyurtmalari ("Buyurtmalarim" tab uchun)
+app.get('/api/orders/user/:telegramUserId', async (req, res) => {
+  const orders = await Order.find({ telegramUserId: req.params.telegramUserId }).sort({ createdAt: -1 });
+  res.json(orders);
+});
+
 // ---------- PayX webhook ----------
 app.post('/payx/webhook', handleWebhook);
 

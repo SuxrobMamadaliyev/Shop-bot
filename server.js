@@ -3,7 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
 
-const { bot, notifyAdmin } = require('./bot');
+const { bot, notifyAdmin, getUnjoinedChannels } = require('./bot');
 const { createPayment, handleWebhook } = require('./payx');
 const Product = require('./product.model');
 const Order = require('./order.model');
@@ -24,9 +24,41 @@ app.get('/api/products', async (req, res) => {
 });
 
 app.post('/api/products', async (req, res) => {
-  // TODO: bu yerga admin tekshiruvi qo'shing
+  // Mahsulotlar endi asosan admin panel (bot, /admin) orqali qo'shiladi.
+  // Bu endpoint faqat ADMIN_API_KEY header to'g'ri kelsa ishlaydi.
+  const key = req.headers['x-admin-key'];
+  if (!process.env.ADMIN_API_KEY || key !== process.env.ADMIN_API_KEY) {
+    return res.status(401).json({ error: 'Ruxsat yo\u2019q' });
+  }
   const product = await Product.create(req.body);
   res.json(product);
+});
+
+// Telegram file_id orqali yuklangan mahsulot rasmini ko'rsatish (redirect)
+app.get('/image/:fileId', async (req, res) => {
+  try {
+    const link = await bot.telegram.getFileLink(req.params.fileId);
+    res.redirect(link.href || link.toString());
+  } catch (e) {
+    res.status(404).send('Rasm topilmadi');
+  }
+});
+
+// Mini App ochilishidan oldin frontend shu orqali obuna holatini tekshirishi mumkin
+app.get('/api/check-subscription/:userId', async (req, res) => {
+  try {
+    const unjoined = await getUnjoinedChannels(req.params.userId);
+    res.json({
+      subscribed: unjoined.length === 0,
+      channels: unjoined.map(ch => ({
+        title: ch.title,
+        username: ch.username,
+        url: ch.username ? `https://t.me/${ch.username.replace('@', '')}` : `https://t.me/${ch.chatId}`
+      }))
+    });
+  } catch (e) {
+    res.status(500).json({ error: 'Server xatosi' });
+  }
 });
 
 // ---------- Buyurtma yaratish + PayX to'lov havolasi ----------

@@ -8,9 +8,21 @@ let products = [];
 let cart = {};
 
 async function loadProducts() {
-  const res = await fetch(`${API_URL}/api/products`);
-  products = await res.json();
-  renderProducts();
+  try {
+    const res = await fetch(`${API_URL}/api/products`);
+    if (!res.ok) throw new Error(`Server xatosi: ${res.status}`);
+    products = await res.json();
+    if (!products.length) {
+      document.getElementById('productList').innerHTML =
+        '<p style="grid-column:1/-1;text-align:center;padding:40px 16px;opacity:.7">Hozircha mahsulot yo\'q. Admin orqali qo\'shing.</p>';
+      return;
+    }
+    renderProducts();
+  } catch (e) {
+    document.getElementById('productList').innerHTML =
+      `<p style="grid-column:1/-1;text-align:center;padding:40px 16px;color:#ff6b6b">Xatolik: mahsulotlarni yuklab bo'lmadi.<br><small>${e.message}</small></p>`;
+    console.error('loadProducts xato:', e);
+  }
 }
 
 function renderProducts() {

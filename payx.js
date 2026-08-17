@@ -1,45 +1,33 @@
 // PayX (payx.uz) to'lov tizimi integratsiyasi
-//
-// ESLATMA: PayX'ning ochiq, umumga ma'lum API hujjatlari topilmadi (sayt JS orqali
-// render bo'ladi va login talab qiladi). Quyidagi kod PayX kabinetiga kirib,
-// "API hujjatlar" bo'limidan olinadigan odatiy agregator patterniga asoslangan
-// (Stripe/Payme-uslubidagi: API key bilan to'lov yaratish + webhook orqali tasdiqlash).
-//
-// PayX kabinetingizdan quyidagilarni tekshirib, kerak bo'lsa moslang:
-//   - PAYX_API_URL to'g'ri bazaviy manzilmi
-//   - so'rov/javob maydon nomlari (masalan amount, order_id, return_url va h.k.)
-//   - webhook imzosini tekshirish usuli (HMAC sarlavha nomi)
+// Rasmiy endpoint: POST https://backend.payx.uz/api/v1/invoice
+// So'rov: { amount, description } | Javob: { pay_url }
 
 const axios = require('axios');
 const crypto = require('crypto');
 const Order = require('./order.model');
 
 const payxClient = axios.create({
-  baseURL: process.env.PAYX_API_URL,
+  baseURL: process.env.PAYX_API_URL, // https://backend.payx.uz
   headers: {
     Authorization: `Bearer ${process.env.PAYX_API_KEY}`,
     'Content-Type': 'application/json'
   }
 });
 
-// 1) Buyurtma uchun PayX orqali to'lov (havola) yaratish
+// 1) Buyurtma uchun PayX orqali invoice (to'lov havolasi) yaratish
 async function createPayment(order) {
   try {
-    const { data } = await payxClient.post('/payments', {
-      merchant_id: process.env.PAYX_MERCHANT_ID,
-      order_id: order._id.toString(),
-      amount: order.totalAmount, // so'mda; PayX tiyinda kutsa order.totalAmount * 100 qiling
-      currency: 'UZS',
-      description: `Buyurtma #${order._id.toString().slice(-6)}`,
-      return_url: `${process.env.WEBAPP_URL}/payment-success.html?order=${order._id}`,
-      callback_url: `${process.env.API_URL}/payx/webhook`
+    const { data } = await payxClient.post('/api/v1/invoice', {
+      amount: order.totalAmount, // so'mda
+      description: `Buyurtma #${order._id.toString().slice(-6)}`
     });
 
-    order.payxPaymentId = data.payment_id || data.id;
+    // PayX javobida invoice/tranzaksiya ID bo'lsa shu yerga saqlang (masalan data.id).
+    // Hozircha faqat pay_url qaytarilgani ma'lum, shuning uchun order_id orqali bog'laymiz.
     order.status = 'awaiting_payment';
     await order.save();
 
-    return data.payment_url || data.url;
+    return data.pay_url;
   } catch (err) {
     console.error('PayX to\u2019lov yaratishda xato:', err.response?.data || err.message);
     throw new Error('To\u2019lov yaratib bo\u2019lmadi');
@@ -47,6 +35,8 @@ async function createPayment(order) {
 }
 
 // 2) Webhook imzosini tekshirish (HMAC-SHA256, PayX kabinetidagi maxfiy kalit bilan)
+// ESLATMA: PayX webhook formati/imzo usuli hali tasdiqlanmagan — kabinetdagi
+// "Callback/Webhook" bo'limidan aniq formatni oling va shu funksiyani moslang.
 function verifyWebhookSignature(req) {
   const signature = req.headers['x-payx-signature'];
   if (!signature || !process.env.PAYX_WEBHOOK_SECRET) return false;

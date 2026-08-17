@@ -8,12 +8,28 @@
 <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header class="header">
-    <h1>🛍 Do'konimiz</h1>
-  </header>
 
-  <main id="productList" class="product-list"></main>
+  <!-- ===== SAHIFA: Do'kon ===== -->
+  <section id="page-shop" class="page">
+    <header class="header">
+      <h1>🛍 Do'konimiz</h1>
+    </header>
+    <main id="productList" class="product-list"></main>
+  </section>
 
+  <!-- ===== SAHIFA: Buyurtmalarim ===== -->
+  <section id="page-orders" class="page hidden">
+    <header class="header"><h1>📦 Buyurtmalarim</h1></header>
+    <div id="ordersList" class="orders-list"></div>
+  </section>
+
+  <!-- ===== SAHIFA: Profil ===== -->
+  <section id="page-profile" class="page hidden">
+    <header class="header"><h1>👤 Profil</h1></header>
+    <div id="profileInfo" class="profile-info"></div>
+  </section>
+
+  <!-- ===== Savat tugmasi (faqat Do'kon sahifasida, mahsulot bo'lganda chiqadi) ===== -->
   <div id="cartBar" class="cart-bar hidden">
     <span id="cartInfo">0 ta mahsulot — 0 so'm</span>
     <button id="cartBtn">Savat 🛒</button>
@@ -30,6 +46,27 @@
       <button id="closeCart" class="secondary">Yopish</button>
     </div>
   </div>
+
+  <!-- ===== Pastki navbar ===== -->
+  <nav class="navbar">
+    <button class="nav-item active" data-page="shop">
+      <span class="nav-icon">🏠</span>
+      <span class="nav-label">Do'kon</span>
+    </button>
+    <button class="nav-item" data-page="cart">
+      <span class="nav-icon">🛒</span>
+      <span class="nav-label">Savat</span>
+      <span id="navCartBadge" class="nav-badge hidden">0</span>
+    </button>
+    <button class="nav-item" data-page="orders">
+      <span class="nav-icon">📦</span>
+      <span class="nav-label">Buyurtmalar</span>
+    </button>
+    <button class="nav-item" data-page="profile">
+      <span class="nav-icon">👤</span>
+      <span class="nav-label">Profil</span>
+    </button>
+  </nav>
 
   <script src="app.js"></script>
 </body>

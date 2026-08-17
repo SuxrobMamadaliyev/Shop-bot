@@ -37,13 +37,36 @@
 
   <div id="cartModal" class="modal hidden">
     <div class="modal-content">
-      <h2>Savat</h2>
-      <div id="cartItems"></div>
-      <input id="fullName" placeholder="Ism familiya" />
-      <input id="phone" placeholder="Telefon raqam" />
-      <input id="address" placeholder="Manzil" />
-      <button id="checkoutBtn">To'lovga o'tish</button>
-      <button id="closeCart" class="secondary">Yopish</button>
+      <div class="modal-header">
+        <h2>🛒 Savat</h2>
+        <button id="closeCart" class="icon-btn" type="button" aria-label="Yopish">✕</button>
+      </div>
+
+      <div id="cartItems" class="cart-items"></div>
+
+      <div id="cartSummary" class="cart-summary hidden">
+        <div class="summary-row"><span>Mahsulotlar</span><span id="summaryCount">0 ta</span></div>
+        <div class="summary-row total"><span>Jami to'lov</span><span id="summaryTotal">0 so'm</span></div>
+      </div>
+
+      <form id="checkoutForm" class="checkout-form">
+        <label class="field">
+          <span class="field-label">👤 Ism familiya</span>
+          <input id="fullName" placeholder="Masalan: Aliyev Vali" autocomplete="name" />
+        </label>
+        <label class="field">
+          <span class="field-label">📞 Telefon raqam</span>
+          <input id="phone" type="tel" placeholder="+998 90 123 45 67" autocomplete="tel" />
+        </label>
+        <label class="field">
+          <span class="field-label">📍 Yetkazish manzili</span>
+          <input id="address" placeholder="Shahar, ko'cha, uy" autocomplete="street-address" />
+        </label>
+        <button type="submit" id="checkoutBtn">
+          <span class="btn-label">To'lovga o'tish</span>
+          <span class="btn-spinner hidden"></span>
+        </button>
+      </form>
     </div>
   </div>
 

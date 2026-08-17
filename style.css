@@ -55,12 +55,31 @@ body {
   max-height: 85vh;
   overflow-y: auto;
 }
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.modal-header h2 { font-size: 18px; }
+.icon-btn {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: var(--tg-theme-secondary-bg-color, #f0f0f0);
+  color: var(--tg-theme-text-color, #111);
+  font-size: 15px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+}
 .modal-content input {
   width: 100%;
   padding: 10px;
   margin: 8px 0;
   border-radius: 8px;
   border: 1px solid #ddd;
+  background: var(--tg-theme-bg-color, #fff);
+  color: var(--tg-theme-text-color, #111);
 }
 .modal-content button {
   width: 100%;
@@ -73,7 +92,103 @@ body {
   font-weight: 600;
 }
 .modal-content button.secondary { background: #eee; color: #111; }
-.cart-item { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #eee; }
+.modal-content button:disabled { opacity: .6; }
+
+/* ===== Savat elementlari ===== */
+.cart-items { display: flex; flex-direction: column; gap: 10px; max-height: 40vh; overflow-y: auto; }
+.cart-item {
+  display: grid;
+  grid-template-columns: 48px 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  background: var(--tg-theme-secondary-bg-color, #f5f5f5);
+  border-radius: 10px;
+}
+.cart-item-img { width: 48px; height: 48px; object-fit: cover; border-radius: 8px; }
+.cart-item-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cart-item-name { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cart-item-price { font-size: 12px; opacity: .7; }
+.qty-stepper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--tg-theme-bg-color, #fff);
+  border-radius: 8px;
+  padding: 2px 4px;
+}
+.qty-stepper button {
+  width: 24px; height: 24px;
+  border-radius: 6px;
+  border: none;
+  background: var(--tg-theme-button-color, #2481cc);
+  color: var(--tg-theme-button-text-color, #fff);
+  font-size: 15px;
+  line-height: 1;
+  padding: 0;
+  margin: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.qty-stepper span { min-width: 16px; text-align: center; font-size: 13px; font-weight: 600; }
+.remove-btn {
+  width: 30px; height: 30px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  font-size: 15px;
+  padding: 0;
+  margin: 0;
+}
+
+.cart-summary { margin-top: 14px; padding-top: 10px; border-top: 1px solid rgba(0,0,0,0.08); }
+.summary-row { display: flex; justify-content: space-between; font-size: 13px; padding: 3px 0; opacity: .75; }
+.summary-row.total { font-size: 16px; font-weight: 700; opacity: 1; margin-top: 4px; }
+
+.checkout-form { margin-top: 12px; }
+.field { display: block; margin-bottom: 4px; }
+.field-label { display: block; font-size: 12px; opacity: .7; margin: 8px 0 2px; }
+
+.btn-spinner {
+  display: inline-block;
+  width: 16px; height: 16px;
+  border: 2px solid rgba(255,255,255,0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ===== Toast ===== */
+.toast {
+  position: fixed;
+  bottom: 140px; left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  background: rgba(20,20,20,0.9);
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  z-index: 200;
+  opacity: 0;
+  transition: opacity .25s, transform .25s;
+  white-space: nowrap;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ===== Buyurtma muvaffaqiyat ekrani ===== */
+.success-card { display: flex; flex-direction: column; align-items: center; }
+.success-icon {
+  font-size: 40px;
+  width: 68px; height: 68px;
+  border-radius: 50%;
+  background: rgba(48,209,88,0.15);
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 10px;
+}
+.success-card p { margin-bottom: 6px; }
+.success-card .hint { font-size: 12px; opacity: .6; }
+.success-card button { margin-top: 10px; }
+.secondary-btn { background: var(--tg-theme-secondary-bg-color, #f0f0f0) !important; color: var(--tg-theme-text-color, #111) !important; }
 
 /* ===== Pastki navbar ===== */
 .navbar {

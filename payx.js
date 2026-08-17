@@ -1,58 +1,50 @@
 // PayX (payx.uz) to'lov tizimi integratsiyasi
+// Rasmiy va tasdiqlangan endpoint: POST https://backend.payx.uz/api/v1/invoice
+// So'rov: { amount, description } | Javob: { pay_url }
 //
-// Usul: PayX "Pay Link" widget'i asosida — https://payx.uz/l/{slug}?amount={summa}
-// (bu havola PayX'ning rasmiy embed.js skriptida ishlatiladigan format).
-// Telegram Mini App WebView ichida window.open popup'lari ko'pincha bloklanadi,
-// shuning uchun widget skriptini frontendga qo'ymasdan, shu havolani to'g'ridan-to'g'ri
-// backendda yasab, so'ng Telegram tg.openLink() orqali ochamiz (bot.js/app.js'da emas,
-// frontend app.js allaqachon shunday ishlaydi — createPayment shu URL'ni qaytaradi).
-//
-// PAYX_PAY_SLUG — PayX kabinetingizda yaratilgan to'lov sahifasi slug'i (masalan "dokon-tolov").
+// ESLATMA: PayX kabinetida alohida "webhook secret" ko'rsatilmagan — demak hozircha
+// webhook imzosini tasdiqlash funksiyasi yo'q yoki ochiq emas. Shu sababli quyida
+// webhook imzosiz qabul qilinadi (faqat order_id/payment holatiga ishoniladi).
+// Bu xavfsizlik jihatidan yetarli emas — soxta so'rov yuborilishi mumkin.
+// Ishonchli yechim: PayX support'dan "to'lov holatini serverdan tekshirish"
+// (GET /api/v1/invoice/:id kabi) endpointi bor-yo'qligini so'rang va webhookka
+// ishonish o'rniga shu orqali holatni serverdan tasdiqlang.
 
-const crypto = require('crypto');
+const axios = require('axios');
 const Order = require('./order.model');
 
-const PAYX_BASE = 'https://payx.uz';
+const payxClient = axios.create({
+  baseURL: process.env.PAYX_API_URL, // https://backend.payx.uz
+  headers: {
+    Authorization: `Bearer ${process.env.PAYX_API_KEY}`,
+    'Content-Type': 'application/json'
+  }
+});
 
-// 1) Buyurtma uchun PayX to'lov havolasini (dinamik summa bilan) yaratish
+// 1) Buyurtma uchun PayX orqali invoice (to'lov havolasi) yaratish
 async function createPayment(order) {
   try {
-    const slug = process.env.PAYX_PAY_SLUG;
-    if (!slug) throw new Error('PAYX_PAY_SLUG .env faylida ko\u2019rsatilmagan');
-
-    const payUrl = `${PAYX_BASE}/l/${encodeURIComponent(slug)}?amount=${encodeURIComponent(order.totalAmount)}`;
+    const { data } = await payxClient.post('/api/v1/invoice', {
+      amount: order.totalAmount, // so'mda
+      description: `Buyurtma #${order._id.toString().slice(-6)}`
+    });
 
     order.status = 'awaiting_payment';
     await order.save();
 
-    return payUrl;
+    return data.pay_url;
   } catch (err) {
-    console.error('PayX to\u2019lov havolasi yaratishda xato:', err.message);
-    throw new Error('To\u2019lov havolasini yaratib bo\u2019lmadi');
+    console.error('PayX to\u2019lov yaratishda xato:', err.response?.data || err.message);
+    throw new Error('To\u2019lov yaratib bo\u2019lmadi');
   }
 }
 
-// 2) Webhook imzosini tekshirish (HMAC-SHA256, PayX kabinetidagi maxfiy kalit bilan)
-// ESLATMA: PayX webhook formati/imzo usuli hali tasdiqlanmagan — kabinetdagi
-// "Callback/Webhook" bo'limidan aniq formatni oling va shu funksiyani moslang.
-function verifyWebhookSignature(req) {
-  const signature = req.headers['x-payx-signature'];
-  if (!signature || !process.env.PAYX_WEBHOOK_SECRET) return false;
-
-  const expected = crypto
-    .createHmac('sha256', process.env.PAYX_WEBHOOK_SECRET)
-    .update(JSON.stringify(req.body))
-    .digest('hex');
-
-  return signature === expected;
-}
-
-// 3) Webhook handler — PayX to'lov holatini shu yerga yuboradi
+// 2) Webhook handler — PayX to'lov holatini shu yerga yuboradi
+// ESLATMA: PayX hozircha alohida "webhook secret" ko'rsatmagani uchun imzo
+// tekshirilmayapti. Bu vaqtinchalik yechim — production'da xavfsizlik uchun
+// PayX support'dan webhook imzosi bormi, yoki to'lov holatini serverdan
+// tekshiradigan GET endpoint bormi, deb so'rab, shu funksiyani mustahkamlang.
 async function handleWebhook(req, res) {
-  if (!verifyWebhookSignature(req)) {
-    return res.status(401).json({ error: 'Imzo noto\u2019g\u2019ri' });
-  }
-
   const { payment_id, order_id, status } = req.body;
 
   try {
